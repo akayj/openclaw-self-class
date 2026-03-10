@@ -58,6 +58,25 @@ class Zoe:
         except Exception as e:
             return f"Runtime Error: {e}"
 
-if __name__ == "__main__":
+def main():
+    """CLI entry point for zoe command."""
     if len(sys.argv) > 2 and sys.argv[1] == "run":
         print(Zoe().run(sys.argv[2]))
+    elif len(sys.argv) > 1 and sys.argv[1] in ["--help", "-h", "help"]:
+        print("Usage: zoe run <task>")
+        print("")
+        print("A minimalist AI Agent. One file, no framework.")
+        print("")
+        print("Commands:")
+        print("  run <task>    Execute a task")
+        print("")
+        print("Environment variables:")
+        print("  ZOE_API_KEY       API key for LLM (required)")
+        print("  ZOE_BASE_URL      Base URL for API (default: https://api.moonshot.cn/v1)")
+        print("  ZOE_MODEL         Model name (default: kimi-k2.5)")
+    else:
+        print("Usage: zoe run <task>")
+        print("Run 'zoe --help' for more information.")
+
+if __name__ == "__main__":
+    main()
