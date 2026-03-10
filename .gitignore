@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# Zig Build Artifacts
+zig-cache/
+zig-out/
+/zoe-os/kernel-zig/zoe-socket
+/zoe-os/kernel-zig/zoe-sentinel
+/zoe-os/kernel-zig/zoe-watcher
+/zoe-os/kernel-zig/check
+
+# Zoe State
+/tmp/zoe-*
