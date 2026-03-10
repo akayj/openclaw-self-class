@@ -1,23 +1,24 @@
-# 🔌 Signal Specification: Sensory Reporting
+# 🌐 Zoe-OS Universal Connectivity
 
-Zoe-OS 的信号传输准则：**严禁传输物理细节，只准传输感官抽象。**
+Zoe-OS 采用 **“内核恒定，能力插拔”** 的架构。
 
-## 1. 禁令 (The Redlines)
-- ❌ 严禁传输具体的 GPIO 引脚号。
-- ❌ 严禁传输电压、电流、原始角度数值。
-- ❌ 严禁传输超过 3 层的嵌套 JSON。
+## 1. 核心 (The Kernel) - Zig
+内核是永恒的。它不包含任何场景代码。
+- **唯一任务**: 维护 `zoe-bus.sock` 语义总线。
+- **反射机制**: 内核内置了对总线健康的监控，一旦节点挂掉，它负责回收资源。
 
-## 2. 准许 (The Standard Sensations)
-底层内核必须将复杂的物理状态压缩为以下标准“感觉”上报大脑：
+## 2. 器官 (The Organs) - Any Language
+器官是动态的。你只需要用你擅长的语言写好驱动，并连接总线。
+- **注册**: 发送 `{"type": "REGISTER", "capability": "FILE_SYSTEM"}`。
+- **执行**: 监听总线，接收内核转发的意图。
 
-| 感觉 (Sensation) | 物理对应 | 大脑响应建议 |
-|-----------------|---------|--------------|
-| `SMOOTH`        | 正常运行 | 维持当前策略 |
-| `STIFF`         | 遇到物理阻力 | 尝试变换角度或加大力度 |
-| `COLLIDED`      | 发生碰撞 | 立即停止并重寻路 |
-| `OVERHEATED`    | 硬件过载 | 强制休息 (Pause) |
+## 3. 大脑 (The Core) - Python
+大脑是灵魂。它通过总线指挥所有已注册的器官。
+- **无需改动**: 换场景只需增加/更换器官节点，大脑代码保持极简。
 
-## 3. 意图下达 (Intent Injection)
-大脑下达的是意图 (Intent)，而非指令 (Instruction)：
-- ✅ `"intent": "GRAB_CUP"`
-- ❌ `"cmd": "servo_set_angle(4, 90)"`
+---
+
+### 示例：如何适配新场景
+1. **机器人场景**: 启动 `servo_driver.py` 连接总线。
+2. **桌面整理场景**: 启动 `file_sorter.py` 连接总线。
+3. **Zoe-OS 内核**: 稳坐中军，一行代码不用改。
