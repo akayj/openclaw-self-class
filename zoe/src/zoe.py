@@ -34,29 +34,61 @@ class Zoe:
         self.base_url = (os.environ.get("ZOE_BASE_URL", "https://api.moonshot.cn/v1")).rstrip("/")
         self.model = os.environ.get("ZOE_MODEL", "kimi-k2.5")
         self.tools = {
-            "read_file": {"fn": read_file, "desc": "Read file"},
-            "write_file": {"fn": write_file, "desc": "Write file"},
-            "list_dir": {"fn": list_dir, "desc": "List files"},
-            "bash": {"fn": bash, "desc": "Run command"}
+            "read_file": {"fn": read_file, "desc": "Read file contents", "params": {
+                "type": "object", "properties": {"path": {"type": "string", "description": "File path to read"}},
+                "required": ["path"]
+            }},
+            "write_file": {"fn": write_file, "desc": "Write content to file", "params": {
+                "type": "object", "properties": {
+                    "path": {"type": "string", "description": "File path to write"},
+                    "content": {"type": "string", "description": "Content to write"}
+                }, "required": ["path", "content"]
+            }},
+            "list_dir": {"fn": list_dir, "desc": "List files in directory", "params": {
+                "type": "object", "properties": {"path": {"type": "string", "description": "Directory path (default: current)"}}
+            }},
+            "bash": {"fn": bash, "desc": "Execute shell command", "params": {
+                "type": "object", "properties": {"command": {"type": "string", "description": "Shell command to execute"}},
+                "required": ["command"]
+            }}
         }
 
-    def run(self, task: str):
+    def run(self, task: str, max_iterations: int = 10):
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         messages = [{"role": "system", "content": self.instruction}, {"role": "user", "content": task}]
-        tools_spec = [{"type": "function", "function": {"name": k, "description": v["desc"], "parameters": {"type": "object", "properties": {}}}} for k, v in self.tools.items()]
+        tools_spec = [{"type": "function", "function": {"name": k, "description": v["desc"], "parameters": v["params"]}} for k, v in self.tools.items()]
         
-        try:
-            r = requests.post(f"{self.base_url}/chat/completions", headers=headers, 
-                             json={"model": self.model, "messages": messages, "tools": tools_spec}, timeout=60)
-            data = r.json()
-            if "choices" not in data: return f"LLM Error: {data.get('error', 'Unknown')}"
-            
-            msg = data["choices"][0]["message"]
-            if not msg.get("tool_calls"): return msg.get("content", "")
-            # Simplified for speed in zoe-ls usecase
-            return f"Tools needed: {msg['tool_calls'][0]['function']['name']}"
-        except Exception as e:
-            return f"Runtime Error: {e}"
+        for _ in range(max_iterations):
+            try:
+                r = requests.post(f"{self.base_url}/chat/completions", headers=headers, 
+                                 json={"model": self.model, "messages": messages, "tools": tools_spec}, timeout=60)
+                data = r.json()
+                if "choices" not in data: return f"LLM Error: {data.get('error', 'Unknown')}"
+                
+                msg = data["choices"][0]["message"]
+                messages.append(msg)
+                
+                if not msg.get("tool_calls"):
+                    return msg.get("content", "(no response)")
+                
+                # Execute tool calls
+                for tc in msg["tool_calls"]:
+                    name = tc["function"]["name"]
+                    args = json.loads(tc["function"].get("arguments", "{}"))
+                    # Filter args to only include valid parameters for the function
+                    import inspect
+                    fn = self.tools[name]["fn"]
+                    valid_params = set(inspect.signature(fn).parameters.keys())
+                    filtered_args = {k: v for k, v in args.items() if k in valid_params}
+                    if name in self.tools:
+                        result = fn(**filtered_args)
+                    else:
+                        result = f"Unknown tool: {name}"
+                    messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
+            except Exception as e:
+                return f"Runtime Error: {e}"
+        
+        return "Max iterations reached"
 
 def main():
     """CLI entry point for zoe command."""
